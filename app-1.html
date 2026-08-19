@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>V.I.V.A. Life Planner</title>
+<meta name="description" content="Organiza tu vida. Cultiva tus metas. Aprende. Crece.">
+<meta name="theme-color" content="#2B2622">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,500&family=Manrope:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js" crossorigin></script>
+<style>
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html,body { background:#F5EFE6; font-family:'Manrope',sans-serif; color:#2B2622; }
+  #root { min-height:100vh; }
+
+  :root {
+    --cream:#F5EFE6; --creamDeep:#EDE4D2; --paper:#FAF6EE;
+    --ink:#2B2622; --ink2:#5A4F45; --ink3:#8C8275; --ink4:#B8AE9D;
+    --line:#D8CFC0; --lineSoft:#E8DFD0;
+    --accentTint:#EFE6D2; --accentMid:#C9BBA0; --accentDeep:#8A7B62; --accentInk:#5C4F3B;
+  }
+
+  .app-shell { display:flex; min-height:100vh; }
+
+  /* ---- Sidebar (desktop) / bottom tabs (mobile) ---- */
+  .app-nav {
+    width:210px; flex-shrink:0; background:var(--ink); color:var(--cream);
+    display:flex; flex-direction:column; padding:26px 16px;
+    position:sticky; top:0; height:100vh;
+  }
+  .app-nav .brand { font-family:'Cormorant Garamond',serif; font-style:italic; font-weight:500; font-size:19px; margin-bottom:4px; }
+  .app-nav .tag { font-family:'JetBrains Mono',monospace; font-size:8.5px; letter-spacing:.08em; text-transform:uppercase; color:#8C8275; margin-bottom:26px; }
+  .app-nav .item {
+    display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:8px; cursor:pointer;
+    font-size:12.5px; font-weight:500; color:#B9AF9E; margin-bottom:2px;
+  }
+  .app-nav .item:hover { background:rgba(255,255,255,.04); }
+  .app-nav .item.on { background:var(--accentTint); color:var(--accentInk); }
+  .app-nav .item.atelier { margin-top:14px; border-top:1px solid #4a4238; padding-top:16px; }
+
+  .app-main { flex:1; min-width:0; padding: 26px 34px 90px; max-width:920px; margin:0 auto; width:100%; }
+  .app-topbar { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:22px; flex-wrap:wrap; gap:8px; }
+  .app-topbar h1 { font-family:'Cormorant Garamond',serif; font-weight:500; font-size:24px; }
+  .app-topbar .date { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--ink3); letter-spacing:.05em; text-transform:uppercase; }
+
+  .card { background:var(--paper); border:1px solid var(--line); border-radius:12px; padding:18px 20px; margin-bottom:16px; }
+  .card h3 { font-family:'Manrope',sans-serif; font-size:11px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:var(--accentDeep); margin-bottom:12px; display:flex; align-items:center; gap:7px; justify-content:space-between; }
+  .card h3 .t { display:flex; align-items:center; gap:7px; }
+
+  .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  .grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; }
+  .grid-4 { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+
+  .stat { text-align:center; padding:14px 8px; background:var(--creamDeep); border-radius:10px; }
+  .stat .v { font-family:'JetBrains Mono',monospace; font-size:19px; color:var(--accentInk); }
+  .stat .l { font-family:'JetBrains Mono',monospace; font-size:8px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink3); margin-top:3px; }
+
+  .row-cb { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--lineSoft); font-size:12.5px; }
+  .row-cb:last-child { border-bottom:none; }
+  .cb {
+    width:16px; height:16px; border:1.3px solid var(--ink4); border-radius:4px; flex-shrink:0; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .cb.on { background:var(--accentDeep); border-color:var(--accentDeep); color:#fff; font-size:10px; }
+  .streak-badge { display:flex; align-items:center; gap:5px; font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--accentInk); }
+
+  input, textarea, select {
+    font-family:'Manrope',sans-serif; font-size:12.5px; border:1px solid var(--line); border-radius:7px;
+    padding:8px 10px; background:#fff; color:var(--ink); width:100%;
+  }
+  input:focus, textarea:focus, select:focus { outline:2px solid var(--accentMid); outline-offset:1px; }
+  textarea { resize:vertical; font-family:inherit; }
+  label.f { display:block; font-family:'JetBrains Mono',monospace; font-size:8.5px; letter-spacing:.07em; text-transform:uppercase; color:var(--ink3); margin-bottom:4px; }
+
+  .btn {
+    font-family:'Manrope',sans-serif; font-size:11.5px; font-weight:600; letter-spacing:.02em;
+    padding:9px 15px; border-radius:8px; border:1px solid var(--ink); background:var(--ink); color:var(--cream);
+    cursor:pointer;
+  }
+  .btn.ghost { background:transparent; color:var(--ink2); border-color:var(--line); }
+  .btn.sm { padding:6px 10px; font-size:10.5px; }
+  .btn:hover { opacity:.88; }
+
+  .habit-add, .fin-add, .proj-add { display:flex; gap:8px; margin-top:10px; }
+
+  .habit-row { display:grid; grid-template-columns: 1fr auto auto; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid var(--lineSoft); }
+  .habit-row:last-child { border-bottom:none; }
+  .habit-name { font-size:12.5px; color:var(--ink2); }
+  .habit-today-cb { width:22px; height:22px; }
+
+  .fin-summary { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:14px; }
+  .fin-list .item { display:grid; grid-template-columns: 90px 1fr 100px 80px 26px; gap:8px; align-items:center; padding:7px 0; border-bottom:1px solid var(--lineSoft); font-size:11.5px; }
+  .fin-list .item .amt.income { color:#4D5C3D; }
+  .fin-list .item .amt.expense { color:#76493D; }
+  .del-btn { background:none; border:none; color:var(--ink4); cursor:pointer; font-size:13px; }
+
+  .proj { border:1px solid var(--line); border-radius:10px; padding:13px 15px; margin-bottom:10px; }
+  .proj .top { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+  .proj .name { font-family:'Cormorant Garamond',serif; font-style:italic; font-size:15px; }
+  .proj .pct { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--accentInk); }
+  .proj .bar { height:6px; background:var(--lineSoft); border-radius:4px; overflow:hidden; }
+  .proj .bar i { display:block; height:100%; background:var(--accentMid); }
+  .proj .slider { width:100%; margin-top:8px; }
+
+  .water-row { display:flex; gap:6px; flex-wrap:wrap; margin-top:6px; }
+  .water-drop { width:26px; height:26px; border-radius:50%; border:1.5px solid var(--accentMid); cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:12px; }
+  .water-drop.on { background:var(--accentTint); }
+
+  textarea.notes-area { width:100%; min-height:260px; border:none; background:transparent; font-size:13px; line-height:1.7; }
+
+  .at-lang-row { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px; }
+  .at-lang-chip { font-family:'JetBrains Mono',monospace; font-size:9.5px; letter-spacing:.05em; text-transform:uppercase; padding:6px 12px; border-radius:14px; border:1px solid var(--line); color:var(--ink2); cursor:pointer; }
+  .at-lang-chip.on { background:var(--accentTint); color:var(--accentInk); border-color:var(--accentMid); }
+  .vocab-item { display:grid; grid-template-columns: 1fr 1fr 100px 26px; gap:8px; align-items:center; padding:8px 0; border-bottom:1px solid var(--lineSoft); font-size:12px; }
+  .vocab-item select { font-size:10px; padding:5px 6px; }
+  .session-item { display:grid; grid-template-columns: 90px 1fr 70px 26px; gap:8px; align-items:center; padding:7px 0; border-bottom:1px solid var(--lineSoft); font-size:11.5px; }
+
+  .empty { font-size:11.5px; color:var(--ink4); font-style:italic; padding:8px 0; }
+
+  .app-bottom-nav { display:none; }
+
+  @media (max-width: 860px) {
+    .app-nav { display:none; }
+    .app-bottom-nav {
+      display:flex; position:fixed; bottom:0; left:0; right:0; background:var(--ink); z-index:20;
+      overflow-x:auto; padding:8px 6px; gap:4px;
+    }
+    .app-bottom-nav .item {
+      flex-shrink:0; display:flex; flex-direction:column; align-items:center; gap:3px;
+      padding:6px 10px; border-radius:8px; color:#8C8275; font-size:8.5px; font-family:'JetBrains Mono',monospace;
+      letter-spacing:.03em; text-transform:uppercase; cursor:pointer;
+    }
+    .app-bottom-nav .item.on { color:var(--accentTint); }
+    .app-main { padding: 20px 16px 90px; }
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    .grid-4 { grid-template-columns: 1fr 1fr; }
+    .fin-summary { grid-template-columns: 1fr; }
+    .vocab-item, .session-item, .fin-list .item { grid-template-columns: 1fr; }
+  }
+
+  .install-banner {
+    background:var(--ink); color:var(--cream); padding:10px 16px; font-size:11.5px;
+    display:flex; justify-content:space-between; align-items:center; gap:10px;
+  }
+  .install-banner button { font-size:10.5px; padding:6px 10px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" data-presets="react">
+const { useState, useEffect, useMemo } = React;
+
+/* ---------------- persistencia local ---------------- */
+const STORAGE_KEY = "viva-life-planner-data-v1";
+
+function loadState(){
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch(e){ console.warn("No se pudo leer localStorage", e); }
+  return {
+    habits: [
+      {id:"h1", name:"Agua", checks:{}},
+      {id:"h2", name:"Movimiento", checks:{}},
+      {id:"h3", name:"Lectura", checks:{}},
+    ],
+    finance: { entries: [] },
+    productivity: { projects: [
+      {id:"p1", name:"Curso de italiano B1", pct:70},
+      {id:"p2", name:"Rutina de bienestar", pct:40},
+    ]},
+    wellness: { water: {} },
+    notes: "",
+    language: {
+      lang: "Italiano",
+      level: "B1",
+      goal: "Conversar con fluidez",
+      vocab: [
+        {id:"v1", word:"scoprire", meaning:"descubrir", status:"Practicando"},
+      ],
+      sessions: [],
+    },
+  };
+}
+
+function useVivaStore(){
+  const [state, setState] = useState(loadState);
+  useEffect(() => {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+    catch(e){ console.warn("No se pudo guardar en localStorage", e); }
+  }, [state]);
+  return [state, setState];
+}
+
+/* ---------------- utilidades de fecha ---------------- */
+function todayKey(){
+  const d = new Date();
+  return d.toISOString().slice(0,10);
+}
+function lastNDays(n){
+  const arr = [];
+  const d = new Date();
+  for(let i=n-1;i>=0;i--){
+    const dd = new Date(d);
+    dd.setDate(d.getDate()-i);
+    arr.push(dd.toISOString().slice(0,10));
+  }
+  return arr;
+}
+function calcStreak(checks){
+  let streak = 0;
+  let d = new Date();
+  while(true){
+    const key = d.toISOString().slice(0,10);
+    if (checks[key]) { streak++; d.setDate(d.getDate()-1); }
+    else break;
+  }
+  return streak;
+}
+
+/* ---------------- Icon set (reducido para la WebApp) ---------------- */
+const ICONS = {
+  home:"M2 8 L8 2.5 L14 8 M4 6.5 V13.5 H12 V6.5",
+  cal:"M2.5 3.5 H13.5 V13 H2.5 Z M2.5 6 H13.5 M5 2 V4.5 M11 2 V4.5",
+  fire:"M8 14 C5 14 3.5 12 3.5 9.8 C3.5 7.8 4.8 6.5 5 4.8 C6 6 6.3 6.8 6.3 6.8 C6.3 6.8 6.5 4 8.3 2 C8 4.5 9.5 5.5 10.3 7.2 C10.8 8.2 11.5 8.7 11.5 9.8 C11.5 12 10 14 8 14 Z",
+  coin:"M8 8 m-5.5 0 a5.5 5.5 0 1 0 11 0 a5.5 5.5 0 1 0 -11 0 M8 5 V11 M6.3 9.7 C6.3 10.6 7 11 8 11 C9.3 11 9.9 10.4 9.9 9.7 C9.9 8 6.1 8.9 6.1 7.2 C6.1 6.5 6.7 6 8 6 C8.8 6 9.5 6.3 9.7 6.9",
+  chart:"M2.5 13.5 H13.5 M4.5 13 V8.5 M8 13 V5 M11.5 13 V9.5",
+  drop:"M8 2 C8 2 3.5 7.2 3.5 10.3 A4.5 4.5 0 0 0 12.5 10.3 C12.5 7.2 8 2 8 2 Z",
+  note:"M3 2.5 H13 V13.5 H3 Z M5 5.5 H11 M5 8 H11 M5 10.5 H9",
+  language:"M2 3.5 H9.5 M5.5 2 V3.5 M3.5 3.5 C3.9 6.3 5.5 8.4 8 9.8 M7.6 3.5 C7 6.6 5 9 2 10.5 M9 13.5 L11.8 6.5 L14.5 13.5 M9.8 11 H13.8",
+  plus:"M8 2.5 V13.5 M2.5 8 H13.5",
+  target:"M8 8 m-6 0 a6 6 0 1 0 12 0 a6 6 0 1 0 -12 0 M8 8 m-3.2 0 a3.2 3.2 0 1 0 6.4 0 a3.2 3.2 0 1 0 -6.4 0 M8 8 m-0.6 0 a0.6 0.6 0 1 0 1.2 0 a0.6 0.6 0 1 0 -1.2 0",
+};
+function Icon({ name, size=14, color="currentColor", stroke=1.3 }){
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none">
+      <path d={ICONS[name]||ICONS.target} stroke={color} strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
+}
+
+/* ---------------- Navegación ---------------- */
+const SECTIONS = [
+  {id:"home", label:"Inicio", icon:"home"},
+  {id:"habits", label:"Hábitos", icon:"fire"},
+  {id:"finance", label:"Finanzas", icon:"coin"},
+  {id:"productivity", label:"Productividad", icon:"chart"},
+  {id:"wellness", label:"Bienestar", icon:"drop"},
+  {id:"notes", label:"Notas", icon:"note"},
+  {id:"atelier", label:"Language Atelier", icon:"language"},
+];
+
+/* ---------------- Secciones ---------------- */
+
+function Home({ state, go }){
+  const habitsToday = state.habits.filter(h => h.checks[todayKey()]).length;
+  const totalHabits = state.habits.length;
+  const income = state.finance.entries.filter(e=>e.type==="income").reduce((a,e)=>a+Number(e.amount||0),0);
+  const expense = state.finance.entries.filter(e=>e.type==="expense").reduce((a,e)=>a+Number(e.amount||0),0);
+  const avgStreak = totalHabits ? Math.round(state.habits.reduce((a,h)=>a+calcStreak(h.checks),0)/totalHabits) : 0;
+  const langStreak = useMemo(() => {
+    const dates = new Set(state.language.sessions.map(s=>s.date));
+    let streak=0; let d = new Date();
+    while(true){ const k = d.toISOString().slice(0,10); if(dates.has(k)){streak++; d.setDate(d.getDate()-1);} else break; }
+    return streak;
+  }, [state.language.sessions]);
+
+  return (
+    <div>
+      <div className="card">
+        <h3><span className="t"><Icon name="target" color="var(--accentDeep)"/>Foco del día</span></h3>
+        <p style={{fontFamily:"'Cormorant Garamond',serif", fontStyle:"italic", fontSize:18}}>Menos ruido. Más intención.</p>
+      </div>
+      <div className="grid-4">
+        <div className="stat"><div className="v">{habitsToday}/{totalHabits}</div><div className="l">Hábitos hoy</div></div>
+        <div className="stat"><div className="v">{avgStreak}</div><div className="l">Racha media</div></div>
+        <div className="stat"><div className="v">{(income-expense).toFixed(0)}</div><div className="l">Queda (importe)</div></div>
+        <div className="stat"><div className="v">{langStreak}</div><div className="l">Racha idioma</div></div>
+      </div>
+      <div className="grid-2" style={{marginTop:16}}>
+        <div className="card">
+          <h3><span className="t"><Icon name="fire" color="var(--accentDeep)"/>Hábitos</span><span className="btn ghost sm" onClick={()=>go("habits")}>Ver todos</span></h3>
+          {state.habits.slice(0,4).map(h => (
+            <div key={h.id} className="row-cb">
+              <span className={"cb"+(h.checks[todayKey()]?" on":"")}>{h.checks[todayKey()] ? "✓":""}</span>
+              {h.name}
+            </div>
+          ))}
+          {state.habits.length===0 && <div className="empty">Todavía no has añadido hábitos.</div>}
+        </div>
+        <div className="card">
+          <h3><span className="t"><Icon name="language" color="var(--accentDeep)"/>Language Atelier</span><span className="btn ghost sm" onClick={()=>go("atelier")}>Abrir</span></h3>
+          <p style={{fontSize:12, color:"var(--ink2)", lineHeight:1.6}}>
+            Aprendiendo <strong>{state.language.lang}</strong> · nivel {state.language.level}<br/>
+            Meta: {state.language.goal || "—"}<br/>
+            {state.language.vocab.length} palabras registradas
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Habits({ state, setState }){
+  const [name, setName] = useState("");
+  const days = lastNDays(7);
+
+  function toggle(hid, day){
+    setState(s => ({...s, habits: s.habits.map(h => h.id!==hid ? h : {...h, checks:{...h.checks, [day]: !h.checks[day]}})}));
+  }
+  function addHabit(){
+    if(!name.trim()) return;
+    setState(s => ({...s, habits:[...s.habits, {id:"h"+Date.now(), name:name.trim(), checks:{}}]}));
+    setName("");
+  }
+  function removeHabit(hid){
+    setState(s => ({...s, habits: s.habits.filter(h=>h.id!==hid)}));
+  }
+
+  return (
+    <div className="card">
+      <h3><span className="t"><Icon name="fire" color="var(--accentDeep)"/>Hábitos — últimos 7 días</span></h3>
+      {state.habits.map(h => (
+        <div key={h.id} className="habit-row">
+          <div>
+            <div className="habit-name">{h.name}</div>
+            <div className="streak-badge"><Icon name="fire" size={11} color="var(--accentDeep)"/>{calcStreak(h.checks)} días de racha</div>
+          </div>
+          <div style={{display:"flex", gap:4}}>
+            {days.map(d => (
+              <span key={d} className={"cb habit-today-cb"+(h.checks[d]?" on":"")} onClick={()=>toggle(h.id,d)}>{h.checks[d]?"✓":""}</span>
+            ))}
+          </div>
+          <button className="del-btn" onClick={()=>removeHabit(h.id)}>✕</button>
+        </div>
+      ))}
+      {state.habits.length===0 && <div className="empty">Añade tu primer hábito abajo.</div>}
+      <div className="habit-add">
+        <input placeholder="Nuevo hábito (ej. Meditar)" value={name} onChange={e=>setName(e.target.value)} onKeyDown={e=>e.key==="Enter" && addHabit()}/>
+        <button className="btn" onClick={addHabit}>Añadir</button>
+      </div>
+    </div>
+  );
+}
+
+function Finance({ state, setState }){
+  const [form, setForm] = useState({desc:"", cat:"Otros", amount:"", type:"expense"});
+  const cats = ["Vivienda","Alimentación","Transporte","Salud","Educación","Ocio","Ahorro","Otros"];
+  const entries = state.finance.entries;
+  const income = entries.filter(e=>e.type==="income").reduce((a,e)=>a+Number(e.amount||0),0);
+  const expense = entries.filter(e=>e.type==="expense").reduce((a,e)=>a+Number(e.amount||0),0);
+
+  function addEntry(){
+    if(!form.desc.trim() || !form.amount) return;
+    setState(s => ({...s, finance:{entries:[{id:"f"+Date.now(), date:todayKey(), ...form, amount:Number(form.amount)}, ...s.finance.entries]}}));
+    setForm({desc:"", cat:"Otros", amount:"", type:"expense"});
+  }
+  function removeEntry(id){
+    setState(s => ({...s, finance:{entries: s.finance.entries.filter(e=>e.id!==id)}}));
+  }
+
+  return (
+    <div>
+      <div className="card">
+        <div className="fin-summary">
+          <div className="stat"><div className="v">{income.toFixed(0)}</div><div className="l">Entra</div></div>
+          <div className="stat"><div className="v">{expense.toFixed(0)}</div><div className="l">Sale</div></div>
+          <div className="stat"><div className="v">{(income-expense).toFixed(0)}</div><div className="l">Queda</div></div>
+        </div>
+        <div className="fin-add">
+          <input placeholder="Descripción" value={form.desc} onChange={e=>setForm({...form, desc:e.target.value})}/>
+          <select value={form.cat} onChange={e=>setForm({...form, cat:e.target.value})}>
+            {cats.map(c=><option key={c}>{c}</option>)}
+          </select>
+          <input type="number" placeholder="Importe" value={form.amount} onChange={e=>setForm({...form, amount:e.target.value})} style={{maxWidth:100}}/>
+          <select value={form.type} onChange={e=>setForm({...form, type:e.target.value})} style={{maxWidth:100}}>
+            <option value="expense">Sale</option>
+            <option value="income">Entra</option>
+          </select>
+          <button className="btn" onClick={addEntry}>Añadir</button>
+        </div>
+      </div>
+      <div className="card fin-list">
+        <h3><span className="t">Ledger</span></h3>
+        {entries.length===0 && <div className="empty">Todavía no hay movimientos registrados.</div>}
+        {entries.map(e => (
+          <div key={e.id} className="item">
+            <span style={{fontFamily:"'JetBrains Mono',monospace", fontSize:10, color:"var(--ink4)"}}>{e.date}</span>
+            <span>{e.desc}</span>
+            <span style={{fontSize:10.5, color:"var(--ink3)"}}>{e.cat}</span>
+            <span className={"amt "+e.type}>{e.type==="income"?"+":"−"}{e.amount}</span>
+            <button className="del-btn" onClick={()=>removeEntry(e.id)}>✕</button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function Productivity({ state, setState }){
+  const [name, setName] = useState("");
+  function addProject(){
+    if(!name.trim()) return;
+    setState(s => ({...s, productivity:{projects:[...s.productivity.projects, {id:"p"+Date.now(), name:name.trim(), pct:0}]}}));
+    setName("");
+  }
+  function setPct(id, pct){
+    setState(s => ({...s, productivity:{projects: s.productivity.projects.map(p=>p.id!==id?p:{...p, pct:Number(pct)})}}));
+  }
+  function removeProject(id){
+    setState(s => ({...s, productivity:{projects: s.productivity.projects.filter(p=>p.id!==id)}}));
+  }
+  return (
+    <div className="card">
+      <h3><span className="t"><Icon name="chart" color="var(--accentDeep)"/>Proyectos</span></h3>
+      {state.productivity.projects.map(p => (
+        <div key={p.id} className="proj">
+          <div className="top">
+            <span className="name">{p.name}</span>
+            <span style={{display:"flex", alignItems:"center", gap:8}}>
+              <span className="pct">{p.pct}%</span>
+              <button className="del-btn" onClick={()=>removeProject(p.id)}>✕</button>
+            </span>
+          </div>
+          <div className="bar"><i style={{width:p.pct+"%"}}></i></div>
+          <input className="slider" type="range" min="0" max="100" value={p.pct} onChange={e=>setPct(p.id, e.target.value)}/>
+        </div>
+      ))}
+      {state.productivity.projects.length===0 && <div className="empty">Añade tu primer proyecto abajo.</div>}
+      <div className="proj-add">
+        <input placeholder="Nuevo proyecto" value={name} onChange={e=>setName(e.target.value)} onKeyDown={e=>e.key==="Enter" && addProject()}/>
+        <button className="btn" onClick={addProject}>Añadir</button>
+      </div>
+    </div>
+  );
+}
+
+function Wellness({ state, setState }){
+  const today = todayKey();
+  const count = state.wellness.water[today] || 0;
+  function setWater(n){
+    setState(s => ({...s, wellness:{water:{...s.wellness.water, [today]: n}}}));
+  }
+  return (
+    <div className="card">
+      <h3><span className="t"><Icon name="drop" color="var(--accentDeep)"/>Agua de hoy</span></h3>
+      <div className="water-row">
+        {Array.from({length:8}).map((_,i) => (
+          <span key={i} className={"water-drop"+(i<count?" on":"")} onClick={()=>setWater(i<count ? i : i+1)}>💧</span>
+        ))}
+      </div>
+      <p style={{fontSize:11.5, color:"var(--ink3)", marginTop:10}}>{count} de 8 vasos</p>
+    </div>
+  );
+}
+
+function Notes({ state, setState }){
+  return (
+    <div className="card">
+      <h3><span className="t"><Icon name="note" color="var(--accentDeep)"/>Notas</span></h3>
+      <textarea className="notes-area" placeholder="Escribe libremente…" value={state.notes}
+        onChange={e=>setState(s=>({...s, notes:e.target.value}))}/>
+    </div>
+  );
+}
+
+function Atelier({ state, setState }){
+  const langs = ["Inglés","Italiano","Alemán","Francés","Portugués","Catalán"];
+  const [vword, setVword] = useState({word:"", meaning:"", status:"Nueva"});
+  const [session, setSession] = useState({minutes:"", skill:"Vocabulary"});
+
+  const streak = useMemo(() => {
+    const dates = new Set(state.language.sessions.map(s=>s.date));
+    let s=0; let d = new Date();
+    while(true){ const k=d.toISOString().slice(0,10); if(dates.has(k)){s++; d.setDate(d.getDate()-1);} else break; }
+    return s;
+  }, [state.language.sessions]);
+  const totalMinutes = state.language.sessions.reduce((a,s)=>a+Number(s.minutes||0),0);
+
+  function setLang(patch){ setState(s => ({...s, language:{...s.language, ...patch}})); }
+  function addVocab(){
+    if(!vword.word.trim()) return;
+    setLang({vocab:[{id:"v"+Date.now(), ...vword}, ...state.language.vocab]});
+    setVword({word:"", meaning:"", status:"Nueva"});
+  }
+  function removeVocab(id){ setLang({vocab: state.language.vocab.filter(v=>v.id!==id)}); }
+  function addSession(){
+    if(!session.minutes) return;
+    setLang({sessions:[{id:"s"+Date.now(), date:todayKey(), ...session}, ...state.language.sessions]});
+    setSession({minutes:"", skill:"Vocabulary"});
+  }
+  function removeSession(id){ setLang({sessions: state.language.sessions.filter(s=>s.id!==id)}); }
+
+  return (
+    <div>
+      <div className="card">
+        <h3><span className="t"><Icon name="language" color="var(--accentDeep)"/>V.I.V.A. Language Atelier</span></h3>
+        <div className="at-lang-row">
+          {langs.map(l => <span key={l} className={"at-lang-chip"+(state.language.lang===l?" on":"")} onClick={()=>setLang({lang:l})}>{l}</span>)}
+        </div>
+        <div className="grid-3">
+          <div><label className="f">Nivel actual</label><input value={state.language.level} onChange={e=>setLang({level:e.target.value})}/></div>
+          <div><label className="f">Meta</label><input value={state.language.goal} onChange={e=>setLang({goal:e.target.value})}/></div>
+          <div><label className="f">Racha</label><div className="stat" style={{padding:8}}><div className="v" style={{fontSize:15}}>{streak} 🔥</div></div></div>
+        </div>
+      </div>
+
+      <div className="grid-4" style={{marginBottom:16}}>
+        <div className="stat"><div className="v">{totalMinutes}</div><div className="l">Minutos</div></div>
+        <div className="stat"><div className="v">{state.language.sessions.length}</div><div className="l">Sesiones</div></div>
+        <div className="stat"><div className="v">{new Set(state.language.sessions.map(s=>s.date)).size}</div><div className="l">Días</div></div>
+        <div className="stat"><div className="v">{state.language.vocab.length}</div><div className="l">Vocabulario</div></div>
+      </div>
+
+      <div className="card">
+        <h3><span className="t">Vocabulario</span></h3>
+        {state.language.vocab.map(v => (
+          <div key={v.id} className="vocab-item">
+            <strong>{v.word}</strong>
+            <span style={{color:"var(--ink2)"}}>{v.meaning}</span>
+            <select value={v.status} onChange={e=>setLang({vocab: state.language.vocab.map(x=>x.id!==v.id?x:{...x, status:e.target.value})})}>
+              <option>Nueva</option><option>Practicando</option><option>Dominada</option>
+            </select>
+            <button className="del-btn" onClick={()=>removeVocab(v.id)}>✕</button>
+          </div>
+        ))}
+        {state.language.vocab.length===0 && <div className="empty">Aún no hay palabras registradas.</div>}
+        <div className="fin-add">
+          <input placeholder="Palabra" value={vword.word} onChange={e=>setVword({...vword, word:e.target.value})}/>
+          <input placeholder="Significado" value={vword.meaning} onChange={e=>setVword({...vword, meaning:e.target.value})}/>
+          <button className="btn" onClick={addVocab}>Añadir</button>
+        </div>
+      </div>
+
+      <div className="card">
+        <h3><span className="t">Sesiones de estudio</span></h3>
+        {state.language.sessions.map(s => (
+          <div key={s.id} className="session-item">
+            <span style={{fontFamily:"'JetBrains Mono',monospace", fontSize:10, color:"var(--ink4)"}}>{s.date}</span>
+            <span>{s.skill}</span>
+            <span>{s.minutes} min</span>
+            <button className="del-btn" onClick={()=>removeSession(s.id)}>✕</button>
+          </div>
+        ))}
+        {state.language.sessions.length===0 && <div className="empty">Registra tu primera sesión de hoy.</div>}
+        <div className="fin-add">
+          <select value={session.skill} onChange={e=>setSession({...session, skill:e.target.value})}>
+            {["Vocabulary","Phrases","Grammar","Listening","Speaking","Reading","Writing"].map(s=><option key={s}>{s}</option>)}
+          </select>
+          <input type="number" placeholder="Minutos" value={session.minutes} onChange={e=>setSession({...session, minutes:e.target.value})} style={{maxWidth:100}}/>
+          <button className="btn" onClick={addSession}>Registrar</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- App ---------------- */
+
+function App(){
+  const [state, setState] = useVivaStore();
+  const [section, setSection] = useState("home");
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [showInstall, setShowInstall] = useState(false);
+
+  useEffect(() => {
+    if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+      navigator.serviceWorker.register("service-worker.js").catch(()=>{});
+    }
+    window.addEventListener("beforeinstallprompt", (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setShowInstall(true);
+    });
+  }, []);
+
+  const activeLabel = SECTIONS.find(s=>s.id===section)?.label || "";
+
+  return (
+    <div className="app-shell">
+      <div className="app-nav">
+        <div className="brand">V.I.V.A. Life Planner</div>
+        <div className="tag">Sin fechar</div>
+        {SECTIONS.map((s,i) => (
+          <div key={s.id} className={"item"+(section===s.id?" on":"")+(s.id==="atelier"?" atelier":"")} onClick={()=>setSection(s.id)}>
+            <Icon name={s.icon} size={13}/>{s.label}
+          </div>
+        ))}
+      </div>
+
+      <div className="app-main">
+        {showInstall && (
+          <div className="install-banner" style={{marginBottom:16, borderRadius:10}}>
+            <span>Instala V.I.V.A. Life Planner en tu dispositivo</span>
+            <button className="btn" onClick={async ()=>{ if(deferredPrompt){ deferredPrompt.prompt(); await deferredPrompt.userChoice; setShowInstall(false);} }}>Instalar</button>
+          </div>
+        )}
+        <div className="app-topbar">
+          <h1>{activeLabel}</h1>
+          <div className="date">{new Date().toLocaleDateString('es-ES', {weekday:'long', day:'numeric', month:'long'})}</div>
+        </div>
+
+        {section==="home" && <Home state={state} go={setSection}/>}
+        {section==="habits" && <Habits state={state} setState={setState}/>}
+        {section==="finance" && <Finance state={state} setState={setState}/>}
+        {section==="productivity" && <Productivity state={state} setState={setState}/>}
+        {section==="wellness" && <Wellness state={state} setState={setState}/>}
+        {section==="notes" && <Notes state={state} setState={setState}/>}
+        {section==="atelier" && <Atelier state={state} setState={setState}/>}
+      </div>
+
+      <div className="app-bottom-nav">
+        {SECTIONS.map(s => (
+          <div key={s.id} className={"item"+(section===s.id?" on":"")} onClick={()=>setSection(s.id)}>
+            <Icon name={s.icon} size={15}/>{s.label}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
