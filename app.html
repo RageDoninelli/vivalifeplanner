@@ -159,12 +159,50 @@ const { useState, useEffect, useMemo } = React;
 
 /* ---------------- persistencia local ---------------- */
 const STORAGE_KEY = "viva-life-planner-data-v1";
+const LANGS = ["Inglés","Italiano","Alemán","Francés","Portugués","Catalán"];
+
+function emptyLangData(){ return { level:"", goal:"", vocab:[], sessions:[] }; }
+
+function migrateLanguageShape(language){
+  // Formato viejo: { lang, level, goal, vocab:[...], sessions:[...] } compartido entre todos los idiomas.
+  // Formato nuevo: { currentLang, langs: { Idioma: {level,goal,vocab,sessions} } }
+  if (language && language.langs) return language; // ya está en formato nuevo
+
+  const langs = {};
+  LANGS.forEach(l => { langs[l] = emptyLangData(); });
+
+  if (language && language.lang) {
+    // migrar el vocabulario/sesiones existentes hacia el idioma que tenían seleccionado
+    langs[language.lang] = {
+      level: language.level || "",
+      goal: language.goal || "",
+      vocab: language.vocab || [],
+      sessions: language.sessions || [],
+    };
+    return { currentLang: language.lang, langs };
+  }
+
+  return { currentLang: "Italiano", langs };
+}
 
 function loadState(){
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      parsed.language = migrateLanguageShape(parsed.language);
+      return parsed;
+    }
   } catch(e){ console.warn("No se pudo leer localStorage", e); }
+
+  const langs = {};
+  LANGS.forEach(l => { langs[l] = emptyLangData(); });
+  langs["Italiano"] = {
+    level:"B1", goal:"Conversar con fluidez",
+    vocab:[{id:"v1", word:"scoprire", meaning:"descubrir", status:"Practicando"}],
+    sessions:[],
+  };
+
   return {
     habits: [
       {id:"h1", name:"Agua", checks:{}},
@@ -178,15 +216,7 @@ function loadState(){
     ]},
     wellness: { water: {} },
     notes: "",
-    language: {
-      lang: "Italiano",
-      level: "B1",
-      goal: "Conversar con fluidez",
-      vocab: [
-        {id:"v1", word:"scoprire", meaning:"descubrir", status:"Practicando"},
-      ],
-      sessions: [],
-    },
+    language: { currentLang: "Italiano", langs },
   };
 }
 
@@ -265,12 +295,15 @@ function Home({ state, go }){
   const income = state.finance.entries.filter(e=>e.type==="income").reduce((a,e)=>a+Number(e.amount||0),0);
   const expense = state.finance.entries.filter(e=>e.type==="expense").reduce((a,e)=>a+Number(e.amount||0),0);
   const avgStreak = totalHabits ? Math.round(state.habits.reduce((a,h)=>a+calcStreak(h.checks),0)/totalHabits) : 0;
+
+  const currentLangData = state.language.langs[state.language.currentLang] || emptyLangData();
+  const allSessions = useMemo(() => Object.values(state.language.langs).flatMap(l=>l.sessions), [state.language.langs]);
   const langStreak = useMemo(() => {
-    const dates = new Set(state.language.sessions.map(s=>s.date));
+    const dates = new Set(allSessions.map(s=>s.date));
     let streak=0; let d = new Date();
     while(true){ const k = d.toISOString().slice(0,10); if(dates.has(k)){streak++; d.setDate(d.getDate()-1);} else break; }
     return streak;
-  }, [state.language.sessions]);
+  }, [allSessions]);
 
   return (
     <div>
@@ -298,9 +331,9 @@ function Home({ state, go }){
         <div className="card">
           <h3><span className="t"><Icon name="language" color="var(--accentDeep)"/>Language Atelier</span><span className="btn ghost sm" onClick={()=>go("atelier")}>Abrir</span></h3>
           <p style={{fontSize:12, color:"var(--ink2)", lineHeight:1.6}}>
-            Aprendiendo <strong>{state.language.lang}</strong> · nivel {state.language.level}<br/>
-            Meta: {state.language.goal || "—"}<br/>
-            {state.language.vocab.length} palabras registradas
+            Aprendiendo <strong>{state.language.currentLang}</strong> · nivel {currentLangData.level || "—"}<br/>
+            Meta: {currentLangData.goal || "—"}<br/>
+            {currentLangData.vocab.length} palabras registradas en {state.language.currentLang}
           </p>
         </div>
       </div>
@@ -472,66 +505,78 @@ function Notes({ state, setState }){
 }
 
 function Atelier({ state, setState }){
-  const langs = ["Inglés","Italiano","Alemán","Francés","Portugués","Catalán"];
+  const currentLang = state.language.currentLang;
+  const data = state.language.langs[currentLang] || emptyLangData();
   const [vword, setVword] = useState({word:"", meaning:"", status:"Nueva"});
   const [session, setSession] = useState({minutes:"", skill:"Vocabulary"});
 
   const streak = useMemo(() => {
-    const dates = new Set(state.language.sessions.map(s=>s.date));
+    const dates = new Set(data.sessions.map(s=>s.date));
     let s=0; let d = new Date();
     while(true){ const k=d.toISOString().slice(0,10); if(dates.has(k)){s++; d.setDate(d.getDate()-1);} else break; }
     return s;
-  }, [state.language.sessions]);
-  const totalMinutes = state.language.sessions.reduce((a,s)=>a+Number(s.minutes||0),0);
+  }, [data.sessions]);
+  const totalMinutes = data.sessions.reduce((a,s)=>a+Number(s.minutes||0),0);
 
-  function setLang(patch){ setState(s => ({...s, language:{...s.language, ...patch}})); }
+  function switchLang(l){
+    setState(s => ({...s, language:{...s.language, currentLang:l}}));
+  }
+  function patchCurrent(patch){
+    setState(s => ({
+      ...s,
+      language:{
+        ...s.language,
+        langs:{ ...s.language.langs, [currentLang]: {...s.language.langs[currentLang], ...patch} }
+      }
+    }));
+  }
   function addVocab(){
     if(!vword.word.trim()) return;
-    setLang({vocab:[{id:"v"+Date.now(), ...vword}, ...state.language.vocab]});
+    patchCurrent({vocab:[{id:"v"+Date.now(), ...vword}, ...data.vocab]});
     setVword({word:"", meaning:"", status:"Nueva"});
   }
-  function removeVocab(id){ setLang({vocab: state.language.vocab.filter(v=>v.id!==id)}); }
+  function removeVocab(id){ patchCurrent({vocab: data.vocab.filter(v=>v.id!==id)}); }
   function addSession(){
     if(!session.minutes) return;
-    setLang({sessions:[{id:"s"+Date.now(), date:todayKey(), ...session}, ...state.language.sessions]});
+    patchCurrent({sessions:[{id:"s"+Date.now(), date:todayKey(), ...session}, ...data.sessions]});
     setSession({minutes:"", skill:"Vocabulary"});
   }
-  function removeSession(id){ setLang({sessions: state.language.sessions.filter(s=>s.id!==id)}); }
+  function removeSession(id){ patchCurrent({sessions: data.sessions.filter(s=>s.id!==id)}); }
 
   return (
     <div>
       <div className="card">
         <h3><span className="t"><Icon name="language" color="var(--accentDeep)"/>V.I.V.A. Language Atelier</span></h3>
         <div className="at-lang-row">
-          {langs.map(l => <span key={l} className={"at-lang-chip"+(state.language.lang===l?" on":"")} onClick={()=>setLang({lang:l})}>{l}</span>)}
+          {LANGS.map(l => <span key={l} className={"at-lang-chip"+(currentLang===l?" on":"")} onClick={()=>switchLang(l)}>{l}</span>)}
         </div>
         <div className="grid-3">
-          <div><label className="f">Nivel actual</label><input value={state.language.level} onChange={e=>setLang({level:e.target.value})}/></div>
-          <div><label className="f">Meta</label><input value={state.language.goal} onChange={e=>setLang({goal:e.target.value})}/></div>
+          <div><label className="f">Nivel actual</label><input value={data.level} onChange={e=>patchCurrent({level:e.target.value})}/></div>
+          <div><label className="f">Meta</label><input value={data.goal} onChange={e=>patchCurrent({goal:e.target.value})}/></div>
           <div><label className="f">Racha</label><div className="stat" style={{padding:8}}><div className="v" style={{fontSize:15}}>{streak} 🔥</div></div></div>
         </div>
       </div>
 
       <div className="grid-4" style={{marginBottom:16}}>
         <div className="stat"><div className="v">{totalMinutes}</div><div className="l">Minutos</div></div>
-        <div className="stat"><div className="v">{state.language.sessions.length}</div><div className="l">Sesiones</div></div>
-        <div className="stat"><div className="v">{new Set(state.language.sessions.map(s=>s.date)).size}</div><div className="l">Días</div></div>
-        <div className="stat"><div className="v">{state.language.vocab.length}</div><div className="l">Vocabulario</div></div>
+        <div className="stat"><div className="v">{data.sessions.length}</div><div className="l">Sesiones</div></div>
+        <div className="stat"><div className="v">{new Set(data.sessions.map(s=>s.date)).size}</div><div className="l">Días</div></div>
+        <div className="stat"><div className="v">{data.vocab.length}</div><div className="l">Vocabulario</div></div>
       </div>
 
       <div className="card">
-        <h3><span className="t">Vocabulario</span></h3>
-        {state.language.vocab.map(v => (
+        <h3><span className="t">Vocabulario — {currentLang}</span></h3>
+        {data.vocab.map(v => (
           <div key={v.id} className="vocab-item">
             <strong>{v.word}</strong>
             <span style={{color:"var(--ink2)"}}>{v.meaning}</span>
-            <select value={v.status} onChange={e=>setLang({vocab: state.language.vocab.map(x=>x.id!==v.id?x:{...x, status:e.target.value})})}>
+            <select value={v.status} onChange={e=>patchCurrent({vocab: data.vocab.map(x=>x.id!==v.id?x:{...x, status:e.target.value})})}>
               <option>Nueva</option><option>Practicando</option><option>Dominada</option>
             </select>
             <button className="del-btn" onClick={()=>removeVocab(v.id)}>✕</button>
           </div>
         ))}
-        {state.language.vocab.length===0 && <div className="empty">Aún no hay palabras registradas.</div>}
+        {data.vocab.length===0 && <div className="empty">Aún no hay palabras registradas en {currentLang}.</div>}
         <div className="fin-add">
           <input placeholder="Palabra" value={vword.word} onChange={e=>setVword({...vword, word:e.target.value})}/>
           <input placeholder="Significado" value={vword.meaning} onChange={e=>setVword({...vword, meaning:e.target.value})}/>
@@ -540,8 +585,8 @@ function Atelier({ state, setState }){
       </div>
 
       <div className="card">
-        <h3><span className="t">Sesiones de estudio</span></h3>
-        {state.language.sessions.map(s => (
+        <h3><span className="t">Sesiones de estudio — {currentLang}</span></h3>
+        {data.sessions.map(s => (
           <div key={s.id} className="session-item">
             <span style={{fontFamily:"'JetBrains Mono',monospace", fontSize:10, color:"var(--ink4)"}}>{s.date}</span>
             <span>{s.skill}</span>
@@ -549,7 +594,7 @@ function Atelier({ state, setState }){
             <button className="del-btn" onClick={()=>removeSession(s.id)}>✕</button>
           </div>
         ))}
-        {state.language.sessions.length===0 && <div className="empty">Registra tu primera sesión de hoy.</div>}
+        {data.sessions.length===0 && <div className="empty">Registra tu primera sesión de hoy en {currentLang}.</div>}
         <div className="fin-add">
           <select value={session.skill} onChange={e=>setSession({...session, skill:e.target.value})}>
             {["Vocabulary","Phrases","Grammar","Listening","Speaking","Reading","Writing"].map(s=><option key={s}>{s}</option>)}
