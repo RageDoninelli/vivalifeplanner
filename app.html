@@ -155,7 +155,7 @@
 <div id="root"></div>
 
 <script type="text/babel" data-presets="react">
-const { useState, useEffect, useMemo } = React;
+const { useState, useEffect, useMemo, useRef } = React;
 
 /* ---------------- persistencia local ---------------- */
 const STORAGE_KEY = "viva-life-planner-data-v1";
@@ -267,6 +267,8 @@ const ICONS = {
   language:"M2 3.5 H9.5 M5.5 2 V3.5 M3.5 3.5 C3.9 6.3 5.5 8.4 8 9.8 M7.6 3.5 C7 6.6 5 9 2 10.5 M9 13.5 L11.8 6.5 L14.5 13.5 M9.8 11 H13.8",
   plus:"M8 2.5 V13.5 M2.5 8 H13.5",
   target:"M8 8 m-6 0 a6 6 0 1 0 12 0 a6 6 0 1 0 -12 0 M8 8 m-3.2 0 a3.2 3.2 0 1 0 6.4 0 a3.2 3.2 0 1 0 -6.4 0 M8 8 m-0.6 0 a0.6 0.6 0 1 0 1.2 0 a0.6 0.6 0 1 0 -1.2 0",
+  download:"M8 2 V10 M4.5 6.5 L8 10 L11.5 6.5 M3 12.5 H13 V14 H3 Z",
+  upload:"M8 10 V2 M4.5 5.5 L8 2 L11.5 5.5 M3 12.5 H13 V14 H3 Z",
 };
 function Icon({ name, size=14, color="currentColor", stroke=1.3 }){
   return (
@@ -285,6 +287,7 @@ const SECTIONS = [
   {id:"wellness", label:"Bienestar", icon:"drop"},
   {id:"notes", label:"Notas", icon:"note"},
   {id:"atelier", label:"Language Atelier", icon:"language"},
+  {id:"backup", label:"Respaldo", icon:"download"},
 ];
 
 /* ---------------- Secciones ---------------- */
@@ -336,6 +339,12 @@ function Home({ state, go }){
             {currentLangData.vocab.length} palabras registradas en {state.language.currentLang}
           </p>
         </div>
+      </div>
+      <div className="card" style={{marginTop:16, cursor:"pointer"}} onClick={()=>go("backup")}>
+        <h3><span className="t"><Icon name="download" color="var(--accentDeep)"/>¿Ya respaldaste tus datos?</span></h3>
+        <p style={{fontSize:12, color:"var(--ink2)", lineHeight:1.6}}>
+          Descarga una copia de tus hábitos, notas y vocabulario de vez en cuando, por si el navegador borra los datos guardados.
+        </p>
       </div>
     </div>
   );
@@ -607,6 +616,81 @@ function Atelier({ state, setState }){
   );
 }
 
+/* ---------------- Respaldo ---------------- */
+function Backup({ state, setState }){
+  const [status, setStatus] = useState(null); // {type:'ok'|'error', msg}
+  const fileRef = useRef(null);
+
+  function download(){
+    const blob = new Blob([JSON.stringify(state, null, 2)], {type:"application/json"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const stamp = new Date().toISOString().slice(0,10);
+    a.href = url;
+    a.download = `viva-life-planner-respaldo-${stamp}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    setStatus({type:"ok", msg:"Respaldo descargado. Guárdalo en Google Drive, tu galería o donde prefieras."});
+  }
+
+  function onFile(e){
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const parsed = JSON.parse(ev.target.result);
+        if (!parsed || typeof parsed !== "object") throw new Error("archivo inválido");
+        setState(parsed);
+        setStatus({type:"ok", msg:"Respaldo restaurado correctamente. Tus datos ya están de vuelta."});
+      } catch (err) {
+        setStatus({type:"error", msg:"No se pudo leer ese archivo. Asegúrate de elegir un respaldo válido de V.I.V.A. Life Planner."});
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  }
+
+  return (
+    <div>
+      <div className="card">
+        <h3><span className="t"><Icon name="download" color="var(--accentDeep)"/>Descargar respaldo</span></h3>
+        <p style={{fontSize:12, color:"var(--ink2)", lineHeight:1.7, marginBottom:12}}>
+          Guarda una copia de todos tus datos (hábitos, finanzas, proyectos, notas y Language Atelier) en un archivo.
+          Tu navegador puede borrar los datos guardados si pasas mucho tiempo sin abrir la app — con un respaldo,
+          siempre puedes recuperarlos.
+        </p>
+        <button className="btn" onClick={download}>Descargar respaldo ahora</button>
+      </div>
+
+      <div className="card">
+        <h3><span className="t"><Icon name="upload" color="var(--accentDeep)"/>Restaurar respaldo</span></h3>
+        <p style={{fontSize:12, color:"var(--ink2)", lineHeight:1.7, marginBottom:12}}>
+          Elige un archivo de respaldo que hayas descargado antes. Esto reemplaza los datos actuales de la app por los del archivo.
+        </p>
+        <input ref={fileRef} type="file" accept="application/json" style={{display:"none"}} onChange={onFile}/>
+        <button className="btn ghost" onClick={()=>fileRef.current.click()}>Elegir archivo de respaldo</button>
+      </div>
+
+      {status && (
+        <div className="card" style={{borderColor: status.type==="ok" ? "var(--accentMid)" : "#C99577"}}>
+          <p style={{fontSize:12, color: status.type==="ok" ? "var(--accentInk)" : "#A85B44"}}>{status.msg}</p>
+        </div>
+      )}
+
+      <div className="card">
+        <h3><span className="t">Recomendación</span></h3>
+        <p style={{fontSize:12, color:"var(--ink2)", lineHeight:1.7}}>
+          Te conviene descargar un respaldo nuevo cada semana o dos, sobre todo después de agregar vocabulario
+          nuevo o escribir notas importantes. Así nunca dependes solo de la memoria del navegador.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 /* ---------------- App ---------------- */
 
 function App(){
@@ -659,6 +743,7 @@ function App(){
         {section==="wellness" && <Wellness state={state} setState={setState}/>}
         {section==="notes" && <Notes state={state} setState={setState}/>}
         {section==="atelier" && <Atelier state={state} setState={setState}/>}
+        {section==="backup" && <Backup state={state} setState={setState}/>}
       </div>
 
       <div className="app-bottom-nav">
